@@ -21,7 +21,7 @@ class MovieDAO:
      signify whether the user has added the movie to their "My Favorites" list.
     """
     @staticmethod
-    def get_movies(tx, sort, order, limit, skip, user_id):
+    def _get_movies(tx, sort, order, limit, skip, user_id):
         # Define the cypher statement
         print(sort, order)
 
@@ -44,7 +44,7 @@ class MovieDAO:
     def all(self, sort, order, limit=6, skip=0, user_id=None):
         # TODO: Get list from movies from Neo4j
         with self.driver.session() as session:
-            result = session.execute_read(self.get_movies, sort, order, limit, skip, user_id)
+            result = session.execute_read(self._get_movies, sort, order, limit, skip, user_id)
         return result
     # end::all[]
 
