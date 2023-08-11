@@ -3,6 +3,7 @@ from api.data import popular, goodfellas
 from api.exceptions.notfound import NotFoundException
 from api.data import popular
 
+
 class MovieDAO:
     """
     The constructor expects an instance of the Neo4j Driver, which will be
@@ -19,10 +20,32 @@ class MovieDAO:
      If a user_id value is suppled, a `favorite` boolean property should be returned to
      signify whether the user has added the movie to their "My Favorites" list.
     """
+    @staticmethod
+    def get_movies(tx, sort, order, limit, skip, user_id):
+        # Define the cypher statement
+        print(sort, order)
+
+        cypher = """
+            MATCH (m:Movie)
+            WHERE m.`{0}` IS NOT NULL
+            RETURN m {{ .* }} AS movie
+            ORDER BY m.`{0}` {1}
+            SKIP $skip
+            LIMIT $limit
+        """.format(sort, order)
+
+        # Run the statement within the transaction passed as the first argument
+        result = tx.run(cypher, limit=limit, skip=skip, user_id=user_id)
+
+        return [row.value("movie") for row in result]
+
+
     # tag::all[]
     def all(self, sort, order, limit=6, skip=0, user_id=None):
         # TODO: Get list from movies from Neo4j
-        return popular
+        with self.driver.session() as session:
+            result = session.execute_read(self.get_movies, sort, order, limit, skip, user_id)
+        return result
     # end::all[]
 
     """
