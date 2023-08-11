@@ -37,11 +37,27 @@ class AuthDAO:
                 {"email": "An account already exists with this email"}
             )
 
+        try:
+            with self.driver.session() as session:
+                result = session.execute_write(
+                    self._create_user,
+                    email=email,
+                    encrypted=encrypted,
+                    name=name
+                )
+        except ConstraintError as err:
+            raise ValidationException(
+                err.message, {
+                "email": err.message
+            })
+
+        user = result['u']
+
         # Build a set of claims
         payload = {
-            "userId": "00000000-0000-0000-0000-000000000000",
-            "email": email,
-            "name": name,
+            "userId": user.get('userId'),
+            "email": user.get('email'),
+            "name": user.get('name'),
         }
 
         # Generate Token
@@ -49,6 +65,23 @@ class AuthDAO:
 
         return payload
     # end::register[]
+
+    @staticmethod
+    def _create_user(tx, email, encrypted, name):
+        cypher = """
+        CREATE (
+            u:User {
+                userId: randomUuid(),
+                email: $email,
+                password: $encrypted,
+                name: $name
+        })
+        RETURN u
+        """
+
+        result = tx.run(cypher, email=email, encrypted=encrypted, name=name)
+
+        return result.single()
 
     """
     This method should attempt to find a user by the email address provided
@@ -97,6 +130,8 @@ class AuthDAO:
         payload["nbf"] = iat
         payload["exp"] = iat + current_app.config.get('JWT_EXPIRATION_DELTA')
 
+        print(payload)
+        print('sec', self.jwt_secret)
         return jwt.encode(
             payload,
             self.jwt_secret,
